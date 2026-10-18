@@ -1,7 +1,5 @@
 import { FOODS, foodLabel } from './foods.js';
 import { PROT_GROUPS, CARB_GROUPS } from './recipes.js';
-import { parseMeal } from './parse.js';
-import { Portion, gpcFor, loadImage } from './vision.js';
 import {
   S, save, MEALS, MAINS, mealName, SUPPS, uid, todayISO, addDays, prettyDate, shortDate, dowName, weekStart, parseISO,
   allFoods, foodMap, dropFoodCache, allRecipes, getRecipe, macrosOf, foodPer, foodOK, dietOK, targets, entries, mealEntries,
@@ -836,7 +834,20 @@ const GROUP_OF = (fid) => plateGroup(FM()[fid] || { cat: 'extra' });
 const measuredIdx = () => DS.parsed.items.map((it, i) => (it.g == null && it.fixedG == null && ['prot', 'carb', 'veg'].includes(GROUP_OF(it.fid)) ? i : -1)).filter((i) => i >= 0);
 const roundG = (g, f) => { const st = rangeCfg(f).step; return Math.max(st, Math.round(g / st) * st); };
 
-function openDescribe() {
+let parseMeal, Portion, gpcFor, loadImage;
+async function ensureVision() {
+  if (parseMeal && Portion) return true;
+  try {
+    const [p, v] = await Promise.all([import('./parse.js'), import('./vision.js')]);
+    ({ parseMeal } = p); ({ Portion, gpcFor, loadImage } = v);
+    return true;
+  } catch (e) {
+    toast('Faltan archivos de la función Foto (js/parse.js y js/vision.js). Subilos a Vercel.');
+    return false;
+  }
+}
+async function openDescribe() {
+  if (!(await ensureVision())) return;
   DS = { text: '', parsed: { items: [], unknown: [], ignored: [] }, stage: 'text', pstage: 'plate', tool: 'wand', active: 0, tol: 18, brush: 9, cm: S.settings.plateCm || 26, hm: {}, portion: null, img: null, sig: '', counts: null };
   openSheet({ title: 'Describir plato', body: '<div id="ds"></div>', foot: '<button class="btn" id="ds-go" data-act="ds-go">Cargar al plato</button>', onMount: () => { drawDescribe(); setTimeout(() => { const t = $('#ds-text'); if (t) t.focus(); }, 380); } });
 }
@@ -1249,5 +1260,5 @@ UI._today = todayISO();
 render();
 window.__booted = true;
 if (!S.settings.onboarded && !targets().isSet) setTimeout(() => { if (!sheetEl()) openTargets(); }, 450);
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+
 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* ignore */ }

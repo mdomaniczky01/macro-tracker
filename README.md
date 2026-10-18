@@ -29,7 +29,7 @@ npx vercel --prod # publica en producción
 3. Usá la app desde el ícono. Los datos viven en el teléfono (hacé un respaldo desde Ajustes → Respaldo de vez en cuando).
 
 ## Actualizar
-Cuando cambies archivos, subí el número de `VERSION` en `sw.js` (por ejemplo `plato-v2`) para que el iPhone descargue la versión nueva.
+La app se carga desde `bundle.js` (un solo archivo generado con `./build.sh` a partir de `js/`). Si cambiás algo en `js/`, corré `./build.sh` y subí también `bundle.js`. No usa service worker (`sw.js` solo limpia versiones viejas).
 
 ## Estructura
 - `index.html`, `css/styles.css`
@@ -39,4 +39,6 @@ Cuando cambies archivos, subí el número de `VERSION` en `sw.js` (por ejemplo `
 - `js/parse.js`: entiende el texto del plato (“milanesa de pollo con puré y ensalada”) → ingredientes
 - `js/vision.js`: mide porciones en la foto (varita/pincel/zonas sugeridas) — todo en el teléfono, sin servidor ni IA externa
 - `js/ui.js`, `js/app.js`: interfaz
-- `sw.js`, `manifest.webmanifest`, `icons/`: instalación y modo offline
+- `bundle.js`: la app completa en un solo archivo (es lo que carga `index.html`)
+- `sw.js`: solo limpia cachés de versiones viejas
+- `manifest.webmanifest`, `icons/`: instalación en la pantalla de inicio
