@@ -47,7 +47,8 @@ const PICK_NAMES = { prot: 'Proteína', carb: 'Hidrato', veg: 'Verdura', extra: 
 
 // ---------------- plato (borrador persistente) ----------------
 const mkItem = (fid, g) => ({ u: uid(), fid, g: g ?? (FM()[fid] || { def: 100 }).def });
-let PLATE = S.plateDraft && S.plateDraft.items ? S.plateDraft : null;
+let PLATE = S.plateDraft && Array.isArray(S.plateDraft.items) ? S.plateDraft : null;
+if (PLATE) { PLATE.items = PLATE.items.filter((i) => i && FM()[i.fid]); if (!PLATE.items.length) PLATE = null; }
 if (!PLATE) PLATE = { name: '', meal: slotByHour(todayISO()), items: TPL[0].items.map(([f, g]) => mkItem(f, g)), editing: null };
 const savePlate = () => { S.plateDraft = PLATE; save(); };
 
@@ -1246,6 +1247,7 @@ UI._today = todayISO();
 // Inicio
 // ============================================================================
 render();
+window.__booted = true;
 if (!S.settings.onboarded && !targets().isSet) setTimeout(() => { if (!sheetEl()) openTargets(); }, 450);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* ignore */ }

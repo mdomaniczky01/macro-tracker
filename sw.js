@@ -1,6 +1,7 @@
 // Service worker: la app funciona sin conexión.
-// Subí el número de VERSION cuando cambies archivos para que el iPhone se actualice.
-const VERSION = 'plato-v2';
+// Estrategia: primero la red (así siempre ves la versión nueva) y, si no hay conexión, lo guardado.
+// Subí el número de VERSION cuando cambies archivos.
+const VERSION = 'plato-v3';
 const CORE = [
   './', 'index.html', 'manifest.webmanifest', 'css/styles.css',
   'js/app.js', 'js/ui.js', 'js/store.js', 'js/foods.js', 'js/recipes.js', 'js/parse.js', 'js/vision.js',
@@ -8,7 +9,11 @@ const CORE = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(VERSION)
+      .then((c) => Promise.all(CORE.map((u) => fetch(u, { cache: 'reload' }).then((r) => (r.ok ? c.put(u, r) : null)).catch(() => null))))
+      .then(() => self.skipWaiting())
+  );
 });
 self.addEventListener('activate', (e) => {
   e.waitUntil(
@@ -18,13 +23,14 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  const fallback = () => caches.match(req, { ignoreSearch: true }).then((c) => c || (req.mode === 'navigate' ? caches.match('index.html') : undefined));
   e.respondWith(
-    caches.match(req, { ignoreSearch: true }).then((cached) => {
-      const net = fetch(req).then((res) => {
-        if (res && res.ok) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); }
-        return res;
-      }).catch(() => cached || (req.mode === 'navigate' ? caches.match('index.html') : undefined));
-      return cached || net;
-    })
+    Promise.race([
+      fetch(req, { cache: 'no-cache' }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('lento')), 4000)),
+    ]).then((res) => {
+      if (res && res.ok) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); }
+      return res;
+    }).catch(() => fallback().then((c) => c || fetch(req)))
   );
 });
